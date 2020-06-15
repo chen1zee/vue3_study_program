@@ -98,16 +98,16 @@ window.insV01 = new JojoV01({
      * */
     // @ts-ignore
     document.getElementById("app").innerHTML = `
-      <div id="test1">${this.data.a.$get()}</div>
-      <div id="test2">${this.data.b.c.$get()}</div>
-      <button id="test3">toggle BDE</button>
+      <div id="v1AddAId">${this.data.a.$get()}</div>
+      <div id="v1ToggleBCId">${this.data.b.c.$get()}</div>
+      <button id="v1ToggleBDEId">toggle BDE</button>
       <div> render time ${Date.now()}</div>
     `
     // @ts-ignore
-    document.getElementById("test1").onclick = this.methods.addA
+    document.getElementById("v1AddAId").onclick = this.methods.addA
     // @ts-ignore
-    document.getElementById("test2").onclick = this.methods.toggleBC
+    document.getElementById("v1ToggleBCId").onclick = this.methods.toggleBC
     // @ts-ignore
-    document.getElementById("test3").onclick = this.methods.toggleBDE
+    document.getElementById("v1ToggleBDEId").onclick = this.methods.toggleBDE
   }
 })

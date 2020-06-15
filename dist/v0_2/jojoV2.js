@@ -1,33 +1,40 @@
-class Jojo {
+// import {a} from "./a.js"
+//
+// console.log(a)
+class JojoV2 {
     constructor(opt) {
         /** TODO data 应该为 private 不允许 class外部调用 (私有变量)，保证其 g/setter 完全代理其行为 */
         this.data = {};
         this.methods = {};
-        this.data = Jojo.data2Proxy(opt.data(), this);
+        this.initialing = true; // 初始化中flag
+        this.data = JojoV2.data2Proxy(opt.data(), this);
         this.render = opt.render.bind(this);
         Object.entries(opt.methods).forEach(([key, func]) => {
             this.methods[key] = func.bind(this);
         });
+        this.initialing = false;
         // 初始化 渲染一次
         this.render();
     }
     /**
-     * TODO ing 深层 嵌套 proxy 创建
      * 将 data 转换为 proxy 代理其 g/setter
      * @example {a: 123, b: {c: 321}} ->
      * {a: Proxy<123>, b: Proxy<{c: 321}> & { c: Proxy<321> }}
      * */
     static data2Proxy(data, instance) {
-        const temp = {};
+        let temp = {};
+        /**
+         * DONOTIMPLEMENT Proxy 对于 Array 操作亦有代理能力，如 a.push(123) -> (target: [], p: "push") 但本版本不处理 Array
+         * */
+        // 先 外层 proxy-> 遍历 data.key === {...}, 利用proxy 设置代理setter行为
+        temp = JojoV2.createGSProxy(data, instance);
         Object.entries(data).forEach(([key, val]) => {
             if (typeof val == "object" && !Array.isArray(val) && val !== null) { // object: {}
                 // 先迭代 底层数据， 再 proxy化
-                Jojo.data2Proxy(temp[key], instance);
-                temp[key] = Jojo.createGSProxy(val, instance);
+                temp[key] = val;
+                JojoV2.data2Proxy(temp[key], instance);
             }
         });
-        // TODO ing solving
-        temp = Jojo.createGSProxy(data, instance);
         return temp;
     }
     static createGSProxy(val, instance) {
@@ -36,8 +43,20 @@ class Jojo {
                 return target[p];
             },
             set(target, p, value) {
+                /**
+                 * TODO initialing && initialed setter 区分处理
+                 * initialing 注入 底下 proxy
+                 * initialed 调取 对应 proxy
+                 * */
+                /**
+                 * DONOTIMPLEMENT 此版本框架不处理 未声明key
+                 * */
+                if (!target.hasOwnProperty(p))
+                    return false; // 抛错处理
                 target[p] = value;
-                instance.render();
+                /** TODO ing 此处添加 flag */
+                if (!instance.initialing)
+                    instance.render();
                 return true;
             }
         });
@@ -47,21 +66,16 @@ class Jojo {
  * 测试
  * */
 // @ts-ignore
-window.insV02 = new Jojo({
+window.insV02 = new JojoV2({
     data: () => ({ a: 123, b: { c: false, d: { e: false } } }),
     methods: {
-        addA() {
-            const dataA = this.data.a;
-            dataA.$set(dataA.$get() + 1);
-        },
+        addA() { ++this.data.a; },
         toggleBC() {
-            const dataBC = this.data.b.c;
-            dataBC.$set(!dataBC.$get());
+            this.data.b.c = !this.data.b.c;
         },
         /** 此处示范 b.d.e setter 也会触发 render问题， renderDep[!b.d.e] */
         toggleBDE() {
-            const dataBDE = this.data.b.d.e;
-            dataBDE.$set(!dataBDE.$get());
+            this.data.b.d.e = !this.data.b.d.e;
         }
     },
     render() {
@@ -72,17 +86,17 @@ window.insV02 = new Jojo({
          * */
         // @ts-ignore
         document.getElementById("app").innerHTML = `
-      <div id="test1">${this.data.a.$get()}</div>
-      <div id="test2">${this.data.b.c.$get()}</div>
-      <button id="test3">toggle BDE</button>
+      <div id="v2AddAId">${this.data.a}</div>
+      <div id="v2ToggleBCId">${this.data.b.c}</div>
+      <button id="v2ToggleBDEId">toggle BDE</button>
       <div> render time ${Date.now()}</div>
     `;
         // @ts-ignore
-        document.getElementById("test1").onclick = this.methods.addA;
+        document.getElementById("v2AddAId").onclick = this.methods.addA;
         // @ts-ignore
-        document.getElementById("test2").onclick = this.methods.toggleBC;
+        document.getElementById("v2ToggleBCId").onclick = this.methods.toggleBC;
         // @ts-ignore
-        document.getElementById("test3").onclick = this.methods.toggleBDE;
+        document.getElementById("v2ToggleBDEId").onclick = this.methods.toggleBDE;
     }
 });
 //# sourceMappingURL=jojoV2.js.map
