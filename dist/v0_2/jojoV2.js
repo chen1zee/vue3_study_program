@@ -2,8 +2,13 @@
 //
 // console.log(a)
 class JojoV2 {
+    /**
+     * TODO 添加 WeakMap 收集依赖
+     * []WeakMap<> ->
+     * */
+    // private depsArr = []
+    // private depsMapIdx = -1 // depsMap 指针
     constructor(opt) {
-        /** TODO data 应该为 private 不允许 class外部调用 (私有变量)，保证其 g/setter 完全代理其行为 */
         this.data = {};
         this.methods = {};
         this.initialing = true; // 初始化中flag
@@ -30,9 +35,7 @@ class JojoV2 {
         temp = JojoV2.createGSProxy(data, instance);
         Object.entries(data).forEach(([key, val]) => {
             if (typeof val == "object" && !Array.isArray(val) && val !== null) { // object: {}
-                // 先迭代 底层数据， 再 proxy化
-                temp[key] = val;
-                JojoV2.data2Proxy(temp[key], instance);
+                temp[key] = JojoV2.data2Proxy(val, instance);
             }
         });
         return temp;
@@ -43,18 +46,11 @@ class JojoV2 {
                 return target[p];
             },
             set(target, p, value) {
-                /**
-                 * TODO initialing && initialed setter 区分处理
-                 * initialing 注入 底下 proxy
-                 * initialed 调取 对应 proxy
-                 * */
-                /**
-                 * DONOTIMPLEMENT 此版本框架不处理 未声明key
-                 * */
+                /** DONOTIMPLEMENT 此版本框架不处理 未声明key */
                 if (!target.hasOwnProperty(p))
                     return false; // 抛错处理
                 target[p] = value;
-                /** TODO ing 此处添加 flag */
+                // 初始化期间 不render
                 if (!instance.initialing)
                     instance.render();
                 return true;
@@ -79,11 +75,6 @@ window.insV02 = new JojoV2({
         }
     },
     render() {
-        /**
-         * TODO [do not implement] 忽略vue 中 template 转换 js -> fragments -> mounted -> events 到 model.methods 的转发 (view层 event 到 model 层handler 的绑定)
-         * 也就是 此框架 只 实现 model层到view层的绑定
-         * 以下直接 写 dom
-         * */
         // @ts-ignore
         document.getElementById("app").innerHTML = `
       <div id="v2AddAId">${this.data.a}</div>

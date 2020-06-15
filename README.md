@@ -2,7 +2,7 @@
 
 1. #### vue model层->变化->view层render 分析 （双向绑定）
     1. 实现建议框架 Jojo， 实现数据 g/setter 拦截 -> setter触发 render (V0.1) // [done in V0.1](./jojo/v0_1/jojoV01.ts)
-    2. Jojo框架 利用 (Object.defineProperties[es5],vue2) Proxy(es6,本例使用)， 实现data的 getter setter 代理 // ing
+    2. Jojo框架 利用 (Object.defineProperties[es5],vue2) Proxy(es6,本例使用)， 实现data的 getter setter 代理 // [done in V0.2](./jojo/v0_2/jojoV2.ts)
     3. Jojo 添加 effects 的 data依赖Map 如: renderDepMap = {[data.a.b]: ['c']}
     利用 WeakMap 实现, key为getter对应 target, Object:data.a.b, key为对应 propertyKey
     4. Jojo 实现 watch, computed API
