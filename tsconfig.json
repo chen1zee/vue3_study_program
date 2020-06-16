@@ -17,14 +17,13 @@
     "paths": {
       "@src/*": ["./src/*"]
     },
-    "rootDirs": [
-      "."
-    ],
+    "rootDir": ".",
     "jsx": "preserve",
     "jsxFactory": "Taro.createElement",
     "allowJs": true,
     "resolveJsonModule": true,
     "typeRoots": [
+      "index.d.ts",
       "node_modules/@types"
     ]
   },
