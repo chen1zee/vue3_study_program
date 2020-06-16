@@ -2,8 +2,9 @@
  * 创建 reactor 对象(实现 model层变化->view层 自动 render绑定),
  * 根据 入参 data 创建 对应  Proxy对象(从内层到外层) 代理 g/setter
  * 收集依赖 , 建立 depends watcher机制 [v0.3]
+ * TODO computed 需要修改成 value类型 proxy 而不是 funcProxy
  * */
-import {setMapMap} from "./utils.js";
+import {forEachMap, setMapMap} from "./utils.js";
 
 type DataValAnyV05Type = { [k in string]: any }
 type JojoOptV05Type = {
@@ -61,13 +62,10 @@ export class JojoV5 {
   /** 正在运行本次 数据变化 */
   private isSetterHandling = false
   /**
-   * 记录本次触发的 proxy.setter [proxyInstance, 'key', value]
-   * TODO 做成 setter队列, if(isSetterHandling) 收集 本段 触发 setters[] -> render -> isSetterHandling = false [v0.x]
-   * [proxyInstance, PropertyKey, val]
-   * */
-  private nowSetterDesc: [(null|any), PropertyKey, (null|any)] = [null, '', null]
-  /**
    * TODO 新 结构
+   * 记录本次触发的 proxy.setter
+   * 如 a.proxy 触发了 'b', 'c'
+   * Map<{a.proxy, Map<{'b', b's_value}, {'c', c's_value}>}>
    * */
   private nowSetterDescsMap: SetterDescsMapType = new Map()
   /**
@@ -107,7 +105,9 @@ export class JojoV5 {
    * @param {Boolean} runWatch 是否 运行watcher flag
    * */
   private watchAndRender(runWatch = true) {
-    const [proxy, key, value] = this.nowSetterDesc
+    // TODO ing 使用 nowSetterDescsMap
+    const proxy = null, key = 0, value = null
+
     for (let i = 0; i < 1; i++) { // 处理 watcher
       if (!runWatch) break
       const watchProxyMap = this.watchProxyMapMap.get(proxy)
@@ -167,14 +167,12 @@ export class JojoV5 {
         }
         instance.isSetterHandling = true
         // 处理 setters handle
-        instance.nowSetterDesc = [receiver, p, value]
         setMapMap<any, PropertyKey, any>(instance.nowSetterDescsMap, receiver, p, value)
-        console.log(instance.nowSetterDescsMap)
         instance.watchAndRender()
         instance.isSetterHandling = false // 解锁
         // TODO ing 将 nowSetterDesc 改变结构成 nowSetterDescsMap
-        /** 清空依赖集 */
-        // instance.nowSetterDescsMap = new Map()
+        /** 清空setter集 */
+        instance.nowSetterDescsMap = new Map()
         return true
       }
     })
@@ -200,16 +198,31 @@ export class JojoV5 {
       apply(target, _, argArray?: any) {
         const depWeakMap = instance.depsMap.get(depsMapKey)
         if (depWeakMap) { // 若有依赖列表 比对此次 所触发 proxy.key 是否命中依赖
-          instance.nowSetterDescsMap.keys() // TODO ing
+          let hasDepChange = false // 有 依赖 更新
+          forEachMap(instance.nowSetterDescsMap, (keyVMap, proxyInstance) => {
+            const proxyKeySet = depWeakMap.get(proxyInstance)
+            if (!proxyKeySet) return true // depWeakMap中无对应 依赖
+            // 遍历 nowSetterDesc 对应key
+            forEachMap((keyVMap as Map<PropertyKey, any>), (_, key) => {
+              if (!proxyKeySet.has(key)) return true
+              // 命中依赖
+              hasDepChange = true;
+              return false // break
+            })
+            return !hasDepChange // 确认有依赖 break
+          })
+
           // 对应 函数 无 调用 getter 不用调用
-          if (!depWeakMap.has(instance.nowSetterDesc[0])) {
+          if (!hasDepChange) {
             console.log("从 缓存取值")
             return (instance.effectsMap.get(depsMapKey) as EffectsMapValType).returnVal
           }
         }
         /** traceMap 重置 并 func 运行过程收集 getter */
         instance.traceMap = new WeakMap<object, any>()
+        console.log(depsMapKey)
         const runnedVal = target.apply(instance, argArray)
+        console.log(instance.traceMap)
         /** 将 运行后 依赖 收集给 depsMap */
         instance.depsMap.set(depsMapKey, instance.traceMap)
         instance.traceMap = null
@@ -280,9 +293,9 @@ window.insV05 = new JojoV5({
       <div id="v5AddTwoId">data.num: ${this.data.num}</div>
       <div id="v5ToggleBCId">data.b.c: ${this.data.b.c}</div>
       <button id="v5ToggleBDEId">toggle BDE</button>
-      <div>aXNum = ${this.computed.aXNum()}</div>
       <div> render time ${Date.now()}</div>
     `
+    //       <div>aXNum = ${this.computed.aXNum()}</div>
     // @ts-ignore
     document.getElementById("v5AddAId").onclick = this.methods.addA
     // @ts-ignore
