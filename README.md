@@ -5,7 +5,8 @@
     2. Jojo框架 利用 (Object.defineProperties[es5],vue2) Proxy(es6,本例使用)， 实现data的 getter setter 代理 // [done in V0.2](./jojo/v0_2/jojoV2.ts)
     3. Jojo 添加 effects 的 data依赖Map 如: renderDepMap = {a.proxy: ['c', 'd']} -> 表示 render 函数 触发了 a.proxy 代理的 key 'c', 'd'
     利用 Map&WeakMap 实现 // [done in V0.3](./jojo/v0_3/jojoV3.ts)
-    4. Jojo 实现 watch, computed API
+    4. Jojo 实现 watch, computed API // [done in V0.4](./jojo/v0_4/jojoV4.ts)
+    5. 优化 存储结构 // [ing](./jojo/v0_5/jojoV5.ts)
 2. #### vue3 函数式组件 （vue3 组合式 API）
     1. Jojo框架实现 函数式 hooks
 3. #### vue3组合式API 与 React hooks 比较

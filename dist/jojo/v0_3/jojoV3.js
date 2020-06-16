@@ -57,6 +57,7 @@ class JojoV3 {
                     if (!instance.traceMap.has(receiver)) {
                         instance.traceMap.set(receiver, []);
                     }
+                    ;
                     instance.traceMap.get(receiver).push(p);
                 }
                 return target[p];

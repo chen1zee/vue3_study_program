@@ -73,7 +73,7 @@ class JojoV3 {
         /** 依赖收集 */
         if (instance.traceMap !== null) {
           if (!instance.traceMap.has(receiver)) { instance.traceMap.set(receiver, []) }
-          (instance.traceMap.get(receiver) as PropertyKey[]).push(p)
+          ;(instance.traceMap.get(receiver) as PropertyKey[]).push(p)
         }
         return target[p]
       },
