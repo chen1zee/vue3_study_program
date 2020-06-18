@@ -1,11 +1,28 @@
 
 type DataValAnyV06 = { [k in string]: any }
+type ProxyInstance = any
 type JojoOptV06 = {
   data(): DataValAnyV06
 }
 
+
+type TraceMapType = WeakMap<ProxyInstance, Set<PropertyKey>>
+
 export class JojoV6 {
+  /**
+   * 用于 劫持过程中 存储依赖关系
+   * 如: render.Begin -> traceMap 重置 -> render.ing -> 收集 getter -> render.end
+   * -> depsMap['RENDER']存储依赖 = traceMap -> traceMap 重置
+   * WeakMap<k: proxyInstance, v: Set<PropertyKey>
+   * */
+  private traceMap: TraceMapType = new WeakMap()
+
+  /** 正在运行本次 数据变化 */
+  private isSetterHandling = false
+
   public data: DataValAnyV06 = {}
+  private initialing = true // 初始化中flag
+
 
   constructor(opt: JojoOptV06) {
     this.data = JojoV6.data2Proxy(opt.data(), this)
@@ -26,7 +43,26 @@ export class JojoV6 {
   private static createDataProxy(obj: DataValAnyV06, instance: JojoV6) {
     return new Proxy(obj, {
       get(target: any, p: PropertyKey, receiver): any {
-        /**  */
+        /** 依赖收集 */
+        const traceMap = instance.traceMap
+        if (!traceMap.has(receiver)) { traceMap.set(receiver, new Set()) }
+        ;(traceMap.get(receiver) as Set<PropertyKey>).add(p)
+        // 返回值
+        return target[p]
+      },
+      set(target: DataValAnyV06, p: PropertyKey, value: any, receiver: any): boolean {
+        /** DONOTIMPLEMENT 此版本框架不处理 未声明key */
+        if (!target.hasOwnProperty(p)) return false // 抛错处理
+        target[p] = value
+        // 初始化期间 不render
+        if (instance.initialing) return true
+        /** 非初始化, 记录setter */
+        if (instance.isSetterHandling) { // 正在处理 上次 setters handle
+          // TODO 此处 futureSetterDescs 冗余 后续用 Map 或者 Set 将其 去重
+          // TODO ing 改写 futureSetterDescs 结构 SetterDescs = Map<proxyInstance, Map<PropertyKey, [val, preV]>>
+          instance.futureSetterDescs.push([receiver, p])
+          return true
+        }
       }
     })
     return undefined;
