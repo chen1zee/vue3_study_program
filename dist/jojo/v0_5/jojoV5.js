@@ -47,7 +47,6 @@ export class JojoV5 {
         /**
          * 记录 本次 watchAndRender 引起的 其他 setter
          * 并继续处理
-         *
          * */
         this.futureSetterDescs = [];
         this.data = JojoV5.data2Proxy(opt.data(), this);

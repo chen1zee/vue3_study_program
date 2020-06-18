@@ -18,6 +18,7 @@ type TraceMapType = WeakMap<any, Set<PropertyKey>>|null
 type EffectsMapValType = {
   returnVal?: any
 }
+
 type WatchesMapValType = Map<PropertyKey, { // 对应 PropertyKey
   preV: any, // 存储 对应 watch proxyInstance.key 的val 用以标记 preV
   func: any, // 执行函数
@@ -71,7 +72,6 @@ export class JojoV5 {
   /**
    * 记录 本次 watchAndRender 引起的 其他 setter
    * 并继续处理
-   *
    * */
   private futureSetterDescs: [(null|any), PropertyKey][] = []
 
