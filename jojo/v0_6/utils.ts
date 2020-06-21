@@ -2,19 +2,36 @@
 
 /**
  * 向 二维 Map 正确设置 val
- * 如： mapMap = {} -> setMapMap(mapMap, 'a', 'b', 123) -> a: { b: 123 }
+ * 如： mapMap = {} -> setMapMap(mapMap, 'a', 'b', 123) -> { a: { b: 123 } }
  *
  * */
-export function setMapMap<OuterKeyT, innerKeyT, innerValT>(
-  mapMap: Map<OuterKeyT, Map<innerKeyT, innerValT>>,
-  outerKey: OuterKeyT, innerKey: innerKeyT, val: innerValT,
+export function setMapMap<OuterKey, InnerKey, InnerVal>(
+  mapMap: Map<OuterKey, Map<InnerKey, InnerVal>>,
+  outerKey: OuterKey, innerKey: InnerKey, val: InnerVal,
 ) {
   let innerMap = mapMap.get(outerKey)
   if (!innerMap) {
-    mapMap.set(outerKey, new Map<innerKeyT, innerValT>())
+    mapMap.set(outerKey, new Map<InnerKey, InnerVal>())
     innerMap = mapMap.get(outerKey)
   }
-  ;(innerMap as Map<innerKeyT, innerValT>).set(innerKey, val)
+  ;(innerMap as Map<InnerKey, InnerVal>).set(innerKey, val)
+}
+
+type ObjAllMap<K extends object, V> = Map<K, V> | WeakMap<K, V>;
+
+/**
+ * MapSet add
+ * 如: mapSet = {} -> addMapSet(mapSet, 'a', 123) -> {a: Set[123]}
+ * */
+export function addMapSet<MapKey extends object, V>(
+  mapSet: ObjAllMap<MapKey, Set<V>>, mapKey: MapKey, val: V
+) {
+  let set = mapSet.get(mapKey)
+  if (!set) {
+    mapSet.set(mapKey, new Set())
+    set = mapSet.get(mapKey)
+  }
+  ;(set as Set<V>).add(val)
 }
 
 /**

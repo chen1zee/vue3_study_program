@@ -1,6 +1,6 @@
 /**
  * 向 二维 Map 正确设置 val
- * 如： mapMap = {} -> setMapMap(mapMap, 'a', 'b', 123) -> a: { b: 123 }
+ * 如： mapMap = {} -> setMapMap(mapMap, 'a', 'b', 123) -> { a: { b: 123 } }
  *
  * */
 export function setMapMap(mapMap, outerKey, innerKey, val) {
@@ -11,6 +11,19 @@ export function setMapMap(mapMap, outerKey, innerKey, val) {
     }
     ;
     innerMap.set(innerKey, val);
+}
+/**
+ * MapSet add
+ * 如: mapSet = {} -> addMapSet(mapSet, 'a', 123) -> {a: Set[123]}
+ * */
+export function addMapSet(mapSet, mapKey, val) {
+    let set = mapSet.get(mapKey);
+    if (!set) {
+        mapSet.set(mapKey, new Set());
+        set = mapSet.get(mapKey);
+    }
+    ;
+    set.add(val);
 }
 /**
  * 遍历 Map, 若 callBack 返回 false // 则停止遍历
