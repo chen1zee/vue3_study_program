@@ -3,7 +3,11 @@ class JojoV01 {
         /** TODO data 应该为 private 不允许 class外部调用 (私有变量)，保证其 g/setter 完全代理其行为 */
         this.data = {};
         this.methods = {};
+        console.log("### origin data ###");
+        console.log(opt.data());
         this.data = JojoV01.data2InstanceData(opt.data(), this);
+        console.log("### reactive data");
+        console.log(this.data);
         this.render = opt.render.bind(this);
         Object.entries(opt.methods).forEach(([key, func]) => {
             this.methods[key] = func.bind(this);

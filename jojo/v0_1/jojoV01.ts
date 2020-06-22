@@ -18,7 +18,11 @@ class JojoV01 {
   private methods: {[k in string]: () => void} = {}
 
   constructor(opt: JojoOptV01Type) {
+    console.log("### origin data ###")
+    console.log(opt.data())
     this.data = JojoV01.data2InstanceData(opt.data(), this)
+    console.log("### reactive data")
+    console.log(this.data)
     this.render = opt.render.bind(this)
     Object.entries(opt.methods).forEach(([key, func]) => {
       this.methods[key] = func.bind(this)
