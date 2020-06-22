@@ -18,18 +18,24 @@ export class JojoV6 {
         this.traceMap = new WeakMap();
         /** 正在运行本次 数据变化 */
         this.isSetterHandling = false;
+        /** 副作用 进行中 flag */
+        this.isEffecting = false;
         /**
          * 记录本次触发的　proxy.setter[]
          * 如 a.proxy 触发了 'b' = newBVal
          * Map<a.proxy, Map<'b', [preV, newBVal]>>
          * */
         this.nowSettersDescMap = new Map();
+        /**
+         * 记录 isSetterHandling = true // 处理本轮 setters中
+         * 所引起的 其他 setters, 在下一轮次处理
+         * 在下一轮时， 赋值给 nowSettersDescMap
+         * */
+        this.futureSettersDescMap = new Map();
         this.initialing = true; // 初始化中flag
         this.data = JojoV6.data2Proxy(opt.data(), this);
         /** methods 处理 */
-        Object.entries(opt.methods).forEach(([key, func]) => {
-            this.methods[key] = func.bind(this);
-        });
+        this.methods = JojoV6.createMethodsProxy(opt.methods, this);
         this.render = JojoV6.createRenderProxy(opt.render, JojoV6.RENDER_KEY, this);
         // 初始化后 执行一次 render 并收集依赖
         this.render();
@@ -39,7 +45,15 @@ export class JojoV6 {
      * 运行 副作用函数s -> render
      * */
     runEffectsRender() {
-        // TODO watch为副作用, 需遍历处理 then render
+        this.futureSettersDescMap = new Map(); // 初始化 future
+        // 查看是否有 futureSetters
+        if (this.futureSettersDescMap.size) {
+            // TODO watch Effect 有其他副作用 继续处理
+        }
+        else {
+            console.log('is empty future');
+        }
+        this.isSetterHandling = false;
         this.render();
     }
     /**
@@ -88,16 +102,35 @@ export class JojoV6 {
                     console.log("待完成"); // TODO ing
                     return true;
                 }
-                /** 处理本次 setters */
-                instance.isSetterHandling = true;
+                /** 记录 setters */
                 setMapMap(instance.nowSettersDescMap, receiver, p, [preV, value]);
-                instance.runEffectsRender(); // 运行 副作用操作 && render
-                instance.isSetterHandling = false; // 解锁
-                /** 清空setter集 */
-                instance.nowSettersDescMap = new Map();
                 return true;
             }
         });
+    }
+    /** 代理 methods */
+    static createMethodsProxy(methods, instance) {
+        const temp = {};
+        Object.entries(methods).forEach(([key, func]) => {
+            let isRootEffect = false; // 此次effect 是否 根effect
+            temp[key] = function () {
+                if (!instance.isEffecting) { // 本次 触发为 根effect
+                    instance.nowSettersDescMap = new Map(); // 初始化 settersDescMap
+                    isRootEffect = true;
+                    instance.isEffecting = true;
+                }
+                // TODO 处理 promise 异步方法
+                func.apply(instance, arguments);
+                if (isRootEffect) { // 根effect
+                    // 处理 所触发 setters
+                    instance.isEffecting = false;
+                    isRootEffect = false; // 根effect 重置
+                    instance.isSetterHandling = true;
+                    instance.runEffectsRender();
+                }
+            };
+        });
+        return temp;
     }
     /** render 代理 */
     static createRenderProxy(func, depsMapKey, instance) {
@@ -130,7 +163,6 @@ export class JojoV6 {
                 /** traceMap 重置 并 func 运行过程收集 getter */
                 instance.traceMap = new WeakMap();
                 target.apply(instance, argArray);
-                console.log(instance.traceMap);
                 /** 将运行后依赖收集给 depsMap */
                 instance.depsMap.set(depsMapKey, instance.traceMap);
                 instance.traceMap = new WeakMap();
@@ -144,8 +176,9 @@ JojoV6.RENDER_KEY = "$$render";
 window.insV06 = new JojoV6({
     data: () => ({ a: 123, num: 2, b: { c: false, d: { e: false } } }),
     methods: {
-        addA() {
+        addAAndTwo() {
             ++this.data.a;
+            this.methods.addTwo();
         },
         addTwo() {
             ++this.data.num;
@@ -159,7 +192,6 @@ window.insV06 = new JojoV6({
         }
     },
     render() {
-        console.log("render");
         // @ts-ignore
         document.getElementById("app").innerHTML = `
       <div id="v6AddAId">data.a: ${this.data.a}</div>
@@ -170,7 +202,7 @@ window.insV06 = new JojoV6({
     `;
         //       <div>aXNum = ${this.computed.aXNum()}</div>
         // @ts-ignore
-        document.getElementById("v6AddAId").onclick = this.methods.addA;
+        document.getElementById("v6AddAId").onclick = this.methods.addAAndTwo;
         // @ts-ignore
         document.getElementById("v6AddTwoId").onclick = this.methods.addTwo;
         // @ts-ignore
