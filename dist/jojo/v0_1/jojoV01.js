@@ -5,7 +5,7 @@ class JojoV01 {
         this.methods = {};
         console.log("### origin data ###");
         console.log(opt.data());
-        this.data = JojoV01.data2InstanceData(opt.data(), this);
+        this.data = JojoV01.plain2GSObj(opt.data(), this);
         console.log("### reactive data");
         console.log(this.data);
         this.render = opt.render.bind(this);
@@ -24,13 +24,13 @@ class JojoV01 {
      * }
      * &pointer = {_val: 321, $get(), $set()}
      * */
-    static data2InstanceData(data, instance) {
+    static plain2GSObj(data, instance) {
         const temp = {};
         Object.entries(data).forEach(([key, val]) => {
             if (typeof val == "object" && !Array.isArray(val) && val !== null) { // object: {}
                 // 注入 _val, $get, $set && val{object} -> 添加_val,_g/setter
                 // @ts-ignore
-                temp[key] = Object.assign(Object.assign({}, JojoV01.data2InstanceData(val, instance)), JojoV01.createGSObj(val, instance));
+                temp[key] = Object.assign(Object.assign({}, JojoV01.plain2GSObj(val, instance)), JojoV01.createGSObj(val, instance));
                 return;
             }
             // 普通类型 && array && null
@@ -85,8 +85,8 @@ window.insV01 = new JojoV01({
          * */
         // @ts-ignore
         document.getElementById("app").innerHTML = `
-      <div id="v1AddAId">${this.data.a.$get()}</div>
-      <div id="v1ToggleBCId">${this.data.b.c.$get()}</div>
+      <div id="v1AddAId">this.data.a: ${this.data.a.$get()}</div>
+      <div id="v1ToggleBCId">this.data.b.c: ${this.data.b.c.$get()}</div>
       <button id="v1ToggleBDEId">toggle BDE</button>
       <div> render time ${Date.now()}</div>
     `;

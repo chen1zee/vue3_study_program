@@ -1,7 +1,3 @@
-// import {a} from "./a.js"
-//
-// console.log(a)
-
 /**
  * 创建 reactor 对象(实现 model层变化->view层 自动 render绑定),
  * NEWFEATURE 根据 入参 data 创建 对应  Proxy对象(从内层到外层) 代理 g/setter
@@ -93,8 +89,8 @@ window.insV02 = new JojoV2({
 
     // @ts-ignore
     document.getElementById("app").innerHTML = `
-      <div id="v2AddAId">${this.data.a}</div>
-      <div id="v2ToggleBCId">${this.data.b.c}</div>
+      <div id="v2AddAId">this.data.a: ${this.data.a}</div>
+      <div id="v2ToggleBCId">this.data.b.c ${this.data.b.c}</div>
       <button id="v2ToggleBDEId">toggle BDE</button>
       <div> render time ${Date.now()}</div>
     `

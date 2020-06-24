@@ -1,6 +1,3 @@
-// import {a} from "./a.js"
-//
-// console.log(a)
 class JojoV2 {
     /**
      * TODO 添加 WeakMap 收集依赖
@@ -77,8 +74,8 @@ window.insV02 = new JojoV2({
     render() {
         // @ts-ignore
         document.getElementById("app").innerHTML = `
-      <div id="v2AddAId">${this.data.a}</div>
-      <div id="v2ToggleBCId">${this.data.b.c}</div>
+      <div id="v2AddAId">this.data.a: ${this.data.a}</div>
+      <div id="v2ToggleBCId">this.data.b.c ${this.data.b.c}</div>
       <button id="v2ToggleBDEId">toggle BDE</button>
       <div> render time ${Date.now()}</div>
     `;
