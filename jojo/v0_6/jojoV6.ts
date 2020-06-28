@@ -72,6 +72,8 @@ export class JojoV6 {
     // 查看是否有 futureSetters
     if (this.futureSettersDescMap.size) {
       // TODO watch Effect 有其他副作用 继续处理
+      console.log('has future')
+      console.log(this.futureSettersDescMap)
     } else {
       console.log('is empty future')
     }
@@ -207,6 +209,7 @@ export class JojoV6 {
         if (!Object.is(preVObj[p], val)) {
           JojoV6.addSettersDesc(instance, receiver, p, preVObj[p], val)
         }
+        console.log(`${depKey}执行computed函数计算新值`)
         preVObj[p] = val
         return val
       }

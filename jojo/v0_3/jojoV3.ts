@@ -134,8 +134,8 @@ window.insV03 = new JojoV3({
   render(this: JojoV3): void {
     // @ts-ignore
     document.getElementById("app").innerHTML = `
-      <div id="v3AddAId">${this.data.a}</div>
-      <div id="v3ToggleBCId">${this.data.b.c}</div>
+      <div id="v3AddAId">this.data.a: ${this.data.a}</div>
+      <div id="v3ToggleBCId">this.data.b.c:  ${this.data.b.c}</div>
       <button id="v3ToggleBDEId">toggle BDE</button>
       <div> render time ${Date.now()}</div>
     `

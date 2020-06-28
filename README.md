@@ -7,6 +7,7 @@
     利用 Map&WeakMap 实现 // [done in V0.3](./jojo/v0_3/jojoV3.ts)
     4. Jojo 实现 watch, computed API // [done in V0.4](./jojo/v0_4/jojoV4.ts)
     5. 优化 存储结构 // [ing](./jojo/v0_5/jojoV5.ts)
+    6. [present](present/vue_binding.md) 
 2. #### vue3 函数式组件 （vue3 组合式 API）
     1. Jojo框架实现 函数式 hooks
 3. #### vue3组合式API 与 React hooks 比较
