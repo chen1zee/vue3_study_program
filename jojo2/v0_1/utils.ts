@@ -1,16 +1,4 @@
 
-/**
- * Map 获取对应 key || 初始化 对应key 再返回初始值
- * */
-export function getMapItemOrInit<T>(
-  map: Map<string, T>, key: string, initial: () => T
-) {
-  let res = map.get(key)
-  if (res) return res
-  // 未初始化
-  map.set(key, initial())
-  return (map.get(key) as T)
-}
 
 /**
  * 遍历 Map, 若 callBack 返回 false // 则停止遍历

@@ -1,4 +1,4 @@
-import { forEachMap, getMapItemOrInit } from "./utils.js";
+import { forEachMap } from "./utils.js";
 /**
  * 全局 watcher 处理器
  * 用于 收集 每个轮片中  setters -> 触发 watchers -> 收集结束 -> watchers.forEach.run()
@@ -16,7 +16,27 @@ class GlobalWatcherHandler {
                     this.isHandlingWatchersSet = true; // 本轮处理中， 额外的 watchers -> 存入 nextWatchersSet
                     console.log("本轮 ticker有触发 setters 对应 watchers", this.watchersSet);
                     console.log(this.watchersSet.size);
-                    this.watchersSet.forEach(watcher => { watcher.run(); });
+                    /** 将 除 $$render 以外的 watcher 先触发 */
+                    let nowRenderWatcher = null; // 当前轮 有 render watcher 则为 renderWatcher | 无则为 null
+                    this.watchersSet.forEach(watcher => {
+                        if (watcher.name === Jojo2V1.RENDER_TAG) {
+                            nowRenderWatcher = watcher;
+                            return; // render watcher 特殊化处理
+                        }
+                        watcher.run();
+                    });
+                    /**
+                     * 判定 是否有 $$render && nextWatchers 是否存在
+                     * 若 当前watchersSet 有 $$render && nextWatchers(额外的watchers)存在， 则将 $$render 推入 next 处理
+                     * */
+                    if (nowRenderWatcher) {
+                        if (this.nextWatchersSet.size) { // 有 额外 watchers
+                            this.nextWatchersSet.add(nowRenderWatcher);
+                        }
+                        else { // 无 额外 watchers -> 直接 执行 renderWatcher
+                            nowRenderWatcher.run();
+                        }
+                    }
                     this.watchersSet = this.nextWatchersSet; // 承载本轮处理下， 额外触发的 watchers
                     this.nextWatchersSet = new Set(); // 清空 nextWatchersSet
                     this.isHandlingWatchersSet = false;
@@ -46,7 +66,7 @@ class Jojo2V1 {
          * mapKey: 如 data.bbb.ccc -> bbb_ccc; mapVal: set
          * setVal: Watcher 对应 watcher
          * */
-        this.depsSetMap = new Map();
+        this.deps = new Deps();
         this.initialing = true; // 初始化ing flag
         /** data处理 */
         this.data = Jojo2V1.data2Observable(data(), this);
@@ -86,11 +106,9 @@ class Jojo2V1 {
     static createDataObservable(obj, instance, prefix) {
         return new Proxy(obj, {
             get(target, p) {
-                const depsSetMapKey = `${prefix}_${p}`; // depsSetMap 对应的 key
                 // 处理 depsSetMap
-                const depsSet = getMapItemOrInit(instance.depsSetMap, depsSetMapKey, () => new Set());
-                if (globalWatcherHandler.runningWatcher)
-                    depsSet.add(globalWatcherHandler.runningWatcher);
+                instance.deps.pushWatcher2DepsByKey(`${prefix}_${p}`, // depsSetMap 对应的 key
+                globalWatcherHandler);
                 return target[p]; // 返回值
             },
             set(target, p, value) {
@@ -105,17 +123,9 @@ class Jojo2V1 {
                 if (instance.initialing)
                     return true;
                 // 非初始化
-                const depsSetMapKey = `${prefix}_${p}`; // depsSetMap 对应的 key
-                if (!globalWatcherHandler.hasTriggerSetters) {
-                    globalWatcherHandler.hasTriggerSetters = true;
-                }
-                // 通知 Deps 数组中的 watcher 执行更新 ...
-                const depsSet = instance.depsSetMap.get(depsSetMapKey);
-                if (!depsSet || !depsSet.size)
-                    return true;
-                depsSet.forEach(watcher => {
-                    globalWatcherHandler.pushWatcher(watcher); // 推入待处理 watchers
-                });
+                // 通知 Deps 数组中的 watcher 执行更新 (将watchers 推入全局的 watchers处理器) ...
+                instance.deps.pushWatcher2HandlerByKey(`${prefix}_${p}`, // depsSetMap 对应的 key
+                globalWatcherHandler);
                 return true;
             }
         });
@@ -131,28 +141,16 @@ class Jojo2V1 {
                     }, instance, `${Jojo2V1.COMPUTED_PREFIX}_${p}`);
                     watchers[p].run();
                 }
-                const depsSetMapKey = `${Jojo2V1.COMPUTED_PREFIX}_${p}`;
                 // 处理 depsSetMap
-                const depsSet = getMapItemOrInit(instance.depsSetMap, depsSetMapKey, () => new Set());
-                if (globalWatcherHandler.runningWatcher)
-                    depsSet.add(globalWatcherHandler.runningWatcher);
                 // 初始化后，， computed.get 返回缓存值， 只有 setters->触发依赖->本watcher.computed->执行&&更新 _val
+                instance.deps.pushWatcher2DepsByKey(`${Jojo2V1.COMPUTED_PREFIX}_${p}`, globalWatcherHandler);
                 return target[p];
             },
             // -> 更新 _val 相当与 触发 computed.setter ->
             set(target, p, value) {
                 target[p] = value;
-                const depsSetMapKey = `${Jojo2V1.COMPUTED_PREFIX}_${p}`;
-                if (!globalWatcherHandler.hasTriggerSetters) {
-                    globalWatcherHandler.hasTriggerSetters = true;
-                }
-                // 通知 Deps 数组中的 watcher 执行更新 ...
-                const depsSet = instance.depsSetMap.get(depsSetMapKey);
-                if (!depsSet || !depsSet.size)
-                    return true;
-                depsSet.forEach(watcher => {
-                    globalWatcherHandler.pushWatcher(watcher); // 推入待处理 watchers
-                });
+                // 通知 Deps 数组中的 watcher 执行更新 (将watchers 推入全局的 watchers处理器) ...
+                instance.deps.pushWatcher2HandlerByKey(`${Jojo2V1.COMPUTED_PREFIX}_${p}`, globalWatcherHandler);
                 return true;
             }
         });
@@ -170,16 +168,20 @@ class Jojo2V1 {
     }
     /** render 初始化 */
     static createRenderWatcher(func, instance) {
-        const proxyFunc = new Proxy(func, { apply(target) { target.apply(instance); } });
-        return new Watcher(proxyFunc, instance, '$$render');
+        const proxyFunc = new Proxy(func, {
+            apply(target) { console.log("rendering"); target.apply(instance); }
+        });
+        return new Watcher(proxyFunc, instance, Jojo2V1.RENDER_TAG);
     }
 }
 /** computed前缀 */
 Jojo2V1.COMPUTED_PREFIX = '$computed';
+/** render 标记 */
+Jojo2V1.RENDER_TAG = '$$render';
 class Watcher {
-    constructor(func, vm, name) {
+    constructor(func, jojoInstance, name) {
         this.job = func;
-        this.vm = vm;
+        this.jojoInstance = jojoInstance;
         this.name = name;
     }
     /**
@@ -192,13 +194,46 @@ class Watcher {
     run() {
         globalWatcherHandler.runningWatcher = this;
         // 清除 depsSetMap 中 所有 本watcher， watcher.job() 时重新收集依赖
-        forEachMap(this.vm.depsSetMap, (watcherkSet) => {
-            watcherkSet.delete(this);
-            return true;
-        });
+        this.jojoInstance.deps.clearWatcher(this);
         const res = this.job(); // 运行对应函数
         globalWatcherHandler.runningWatcher = null;
         return res;
+    }
+}
+class Deps {
+    constructor() {
+        this.deps = new Map();
+    }
+    /** 通过 key 将 watchers 推入 Set<Watcher> */
+    pushWatcher2DepsByKey(key, gWH) {
+        if (!gWH.runningWatcher)
+            return; // 当前无 watcher
+        let depsSet = this.deps.get(key);
+        if (!depsSet) {
+            // 初始化后返回
+            this.deps.set(key, new Set());
+            depsSet = this.deps.get(key);
+        }
+        /** 将 running watcher 推入 依赖Set */
+        depsSet.add(gWH.runningWatcher);
+    }
+    /** 通过 key push watcher 到 全局的 watchers 处理器 */
+    pushWatcher2HandlerByKey(key, gWH) {
+        if (!gWH.hasTriggerSetters) {
+            gWH.hasTriggerSetters = true;
+        }
+        // 通知 deps Set 中 watcher 执行更新 (推入 全局watchers 处理器)
+        const depsSet = this.deps.get(key);
+        if (!depsSet || !depsSet.size)
+            return;
+        depsSet.forEach(watcher => { gWH.pushWatcher(watcher); });
+    }
+    /** 清除 deps 中对应 watcher */
+    clearWatcher(watcher) {
+        forEachMap(this.deps, (watcherSet) => {
+            watcherSet.delete(watcher);
+            return true;
+        });
     }
 }
 // @ts-ignore
@@ -210,7 +245,10 @@ window.insV01 = new Jojo2V1({
         eee: 100,
     }),
     computed: {
-        AaaXDdd() { return this.data.aaa * this.data.eee; }
+        AaaXDdd() { return this.data.aaa * this.data.eee; },
+        AaaXDddX2() {
+            return this.computed.AaaXDdd * 2;
+        }
     },
     methods: {
         addAaa() {
@@ -242,6 +280,7 @@ window.insV01 = new Jojo2V1({
             '<div>bbb.ccc == true 才展示 -> ddd: ' + this.data.ddd + '</div>' :
             ''}
       <div>computed.AaaXDdd: ${this.computed.AaaXDdd}</div>
+      <div>computed.AaaXDddX2: ${this.computed.AaaXDddX2}</div>
       <div> render time ${Date.now()} </div>
     `;
         // @ts-ignore
